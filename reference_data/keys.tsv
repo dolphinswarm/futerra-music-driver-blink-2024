@@ -1,0 +1,13 @@
+Note	MIDI	Common Key Change Keys
+C	60	G,F,A,A#
+C#	61	A,F#,G#,B
+D	62	A,G,B,C
+D#	63	A#,G#,C,C#
+E	64	B,A,C#,D
+F	65	C,A#,D,D#
+F#	66	C#,B,D#,E
+G	67	D,C,E,F
+G#	68	D#,C#,F,F#
+A	69	E,D,F#,G
+A#	70	F,D#,G,G#
+B	71	F#,E,G#,A

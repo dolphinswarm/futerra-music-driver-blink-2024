@@ -1,0 +1,8 @@
+Name	AKA	Notes	Mood
+ionian	major	0,2,4,5,7,9,11,12	calm
+dorian		0,2,3,5,7,9,10,12	calm
+phrygian		0,1,3,5,7,8,10,12	tense
+lydian		0,2,4,6,7,9,11,12	calm
+mixolydian		0,2,4,5,7,9,10,12	calm
+aeolian	minor	0,2,3,5,7,8,10,12	melancholic
+locrian		0,1,3,5,6,8,10,12	tense
