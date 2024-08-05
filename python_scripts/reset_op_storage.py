@@ -16,20 +16,13 @@ from typing import List, Dict
 # chord = 'I'
 # chord_variation = 'major triad'
 # chord_notes = []
-
-# INSTRUMENT PROPS
-# instruments = {
-# 	"synth_pad": {},
-#   "meditation_pad": {},
-# 	"zen_bowl": {},
-#	"bass_drone": {},
-# }
+# current_scene = 'day'
 
 class Instrument:
 	# Props
 	base_note: int
 	num_voices: int
-	instrument_role: str
+	instrument_role: str # Possible roles: bass, chords, effects, melody
 	playing_notes: List[int]
 
 	# Methods
@@ -47,29 +40,26 @@ def onOffToOn(channel, sampleIndex, val, prev):
 	storage.store('chord', 'I')
 	storage.store('chord_variation', 'major triad')
 	storage.store('chord_notes', ['0', '4', '7'] )
+	storage.store('current_scene', 'day')
+	storage.store('next_scene', 'night')
 
-	# Store instruments in a dictionary, then save that in storage
-	instruments: Dict[str, Instrument] = {
-		# Meditative
-		"synth_pad": Instrument(base_note=60, num_voices=4, instrument_role="chords", playing_notes=[]),
-		"meditation_pad": Instrument(base_note=60, num_voices=1, instrument_role="effects", playing_notes=[]),
-		"zen_bowl": Instrument(base_note=72, num_voices=4, instrument_role="effects", playing_notes=[]),
-		"bass_drone": Instrument(base_note=24, num_voices=1, instrument_role="bass", playing_notes=[]),
-
-		# Retro
-		"synth_melody": Instrument(base_note=60, num_voices=0, instrument_role="melody", playing_notes=[]), # Melody doesn't follow the typical chain, so we set the notes to 0 for safety
-		"synth_pad_retro": Instrument(base_note=60, num_voices=4, instrument_role="chords", playing_notes=[]),
-		"synth_arpeggiator": Instrument(base_note=60, num_voices=4, instrument_role="effects", playing_notes=[]),
-		"bass_drone_retro": Instrument(base_note=24, num_voices=1, instrument_role="bass", playing_notes=[]),
-
-		# Church
-		"choir_melody": Instrument(base_note=60, num_voices=0, instrument_role="melody", playing_notes=[]),
-		"choir_ahs": Instrument(base_note=60, num_voices=4, instrument_role="chords", playing_notes=[]),
-		"strings_hi": Instrument(base_note=72, num_voices=1, instrument_role="chords", playing_notes=[]),
-		# "strings_mid": Instrument(base_note=48, num_voices=4, instrument_role="chords", playing_notes=[]),
-		"strings_lo": Instrument(base_note=24, num_voices=1, instrument_role="bass", playing_notes=[]),
-		"church_organ": Instrument(base_note=60, num_voices=4, instrument_role="chords", playing_notes=[]),
-		"chimes": Instrument(base_note=60, num_voices=4, instrument_role="effects", playing_notes=[]),
+	# Instruments are stored grouped by scene, with each instrument being a dictionary of name and props
+	instruments: Dict[str, Dict[str, Instrument]] = {
+		'day': {
+			"strings_hi": Instrument(base_note=72, num_voices=1, instrument_role="chords", playing_notes=[]),
+			"strings_lo": Instrument(base_note=24, num_voices=1, instrument_role="bass", playing_notes=[]),
+			"church_organ": Instrument(base_note=60, num_voices=4, instrument_role="chords", playing_notes=[]),
+			"chimes": Instrument(base_note=60, num_voices=4, instrument_role="effects", playing_notes=[]),
+		},
+		'night' : {
+			"strings_melody": Instrument(base_note=48, num_voices=0, instrument_role="melody", playing_notes=[]), # Melody doesn't follow the typical chain, so we set the notes to 0 for safety
+			"meditation_pad": Instrument(base_note=60, num_voices=1, instrument_role="effects", playing_notes=[]),
+			"zen_bowl": Instrument(base_note=72, num_voices=4, instrument_role="effects", playing_notes=[]),
+			"bass_drone": Instrument(base_note=24, num_voices=1, instrument_role="bass", playing_notes=[]),
+			# "burnt_sun_pad": Instrument(base_note=48, num_voices=4, instrument_role="chords", playing_notes=[]),
+			"dreamer_pad": Instrument(base_note=48, num_voices=4, instrument_role="chords", playing_notes=[]),
+			"106_organ": Instrument(base_note=60, num_voices=4, instrument_role="effects", playing_notes=[]),
+		}
 	}
 
 	# Store the dictionary in storage
