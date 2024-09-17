@@ -10,6 +10,7 @@
 storage = op('storage_op')
 event_driver = op('event_driver')
 song_props = op('song_props')
+chord_history = op('chord_history')
 
 def onOffToOn(channel, sampleIndex, val, prev):
 	# Reset the event driver (which tracks global time)
@@ -21,7 +22,11 @@ def onOffToOn(channel, sampleIndex, val, prev):
 	# Also also reset Ableton
 	# song_props.par.Stop.pulse() TODO FIGURE OUT WHY NOT WORKING AS EXPECTED
 
-	# This script just kills all running instruments LOL
+	# Clear the chord history
+	while chord_history.numRows > 1:
+		chord_history.deleteRow(chord_history.numRows - 1)
+
+	# Kill all the running instruments
 	instruments = storage.fetch('instruments', {})
 	for scene in instruments.values():
 		for instrument_name, instrument_props in scene.items():
