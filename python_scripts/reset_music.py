@@ -30,10 +30,12 @@ def onOffToOn(channel, sampleIndex, val, prev):
 	instruments = storage.fetch('instruments', {})
 	for scene in instruments.values():
 		for instrument_name, instrument_props in scene.items():
+			# print(instrument_name)
+
 			# If a melody, reset its clip
 			if instrument_props.instrument_role == 'melody':
 				# Remove all existing notes
-				op(instrument_name).RemoveNotes(timeStart=0, pitchStart=0, timeEnd=8, pitchEnd=127)
+				op(instrument_name).RemoveNotes(timeStart=0, pitchStart=0, timeEnd=16, pitchEnd=127)
 				op(instrument_name).par.Stopclip.pulse()
 
 			# Else, it's MIDI, so reset it

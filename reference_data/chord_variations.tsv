@@ -1,13 +1,13 @@
-Chord Variation	Type	Notes Above Root	Possible Transition Variations
-major triad	major	0,4,7	sus2,sus4,6,major 7,add9,minor triad
-minor triad	minor	0,3,7	sus2,sus4,6,minor 7,add9,major triad
-diminished triad	diminished	0,3,6	dominant 7,half-diminished 7,diminished 7
-augmented triad	augmented	0,4,8	major triad,dominant 7
-sus2	suspended	0,2,7	major triad,minor triad,sus4
-sus4	suspended	0,5,7	major triad,minor triad,sus2
-6	major	0,4,7,9	major triad,major 7
-dominant 7	dominant	0,4,7,10	major triad,minor triad,half-diminished 7,diminished 7,6
-major 7	major	0,4,7,11	major triad,major 6
-half-diminished 7	half-diminished	0,3,6,10	dominant 7,diminished 7
-diminished 7	diminished	0,3,6,9	dominant 7,half-diminished 7
-add9	major	0,4,7,14	major triad,6
+Chord Variation	Type	Notes Above Root	Possible Transition Variations	Tension / Resolution
+major triad	major	0,4,7	sus2,sus4,6,major 7,add9,minor triad	resolution
+minor triad	minor	0,3,7	sus2,sus4,6,minor 7,add9,major triad	resolution
+diminished triad	diminished	0,3,6	dominant 7,half-diminished 7,diminished 7	tension
+augmented triad	augmented	0,4,8	major triad,dominant 7	tension
+sus2	suspended	0,2,7	major triad,minor triad,sus4	tension
+sus4	suspended	0,5,7	major triad,minor triad,sus2	tension
+6	major	0,4,7,9	major triad,major 7	resolution
+dominant 7	dominant	0,4,7,10	major triad,minor triad,half-diminished 7,diminished 7,6	tension
+major 7	major	0,4,7,11	major triad,major 6	resolution
+half-diminished 7	half-diminished	0,3,6,10	dominant 7,diminished 7	tension
+diminished 7	diminished	0,3,6,9	dominant 7,half-diminished 7	tension
+add9	major	0,4,7,14	major triad,6	resolution
