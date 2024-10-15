@@ -8,16 +8,16 @@
 # Make sure the corresponding toggle is enabled in the CHOP Execute DAT.
 
 storage = op('storage_op')
-timer = op('timer')
-scene_counter = op('scene_counter')
+timer = op('Compound_Timer')
+d3_osc = op('d3_osc')
 
 def onOffToOn(channel, sampleIndex, val, prev):
 	# Reset to morning on the scene
-	storage.store('current_scene', 'morning')
-	storage.store('next_scene', 'day')
-	timer.par.initialize.pulse()
-	timer.par.start.pulse()
-	scene_counter.par.resetpulse.pulse()
+	storage.store('current_scene', 'night')
+	timer.par.Initialize.pulse()
+	timer.par.Start.pulse()
+	op('Compound_Timer/loop_count').par.const0value = 0
+	d3_osc.sendOSC('/d3/showcontrol/cue', [101])
 
 	return
 

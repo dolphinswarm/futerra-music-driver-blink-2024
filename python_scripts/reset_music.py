@@ -38,6 +38,10 @@ def onOffToOn(channel, sampleIndex, val, prev):
 				op(instrument_name).RemoveNotes(timeStart=0, pitchStart=0, timeEnd=16, pitchEnd=127)
 				op(instrument_name).par.Stopclip.pulse()
 
+			# If it's SFX, reset the clip without doing anything MIDI-wise
+			elif instrument_props.instrument_role == 'sfx':
+				op(instrument_name).par.Stopclip.pulse()
+			
 			# Else, it's MIDI, so reset it
 			else:
 				op(instrument_name).SendMIDI('flush')

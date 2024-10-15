@@ -57,6 +57,9 @@ def kill_instruments(instruments, current_scene, next_scene):
 	current_scene (str): The name of the current scene
 	"""
 	for scene_name, scene_instruments in instruments.items():
+		# Make an empty object for killing off instruments
+		empty_instruments = {}
+
 		# If the scene is the current scene or the volume is audible (i.e., the previous scene), send notes to it
 		if scene_name == current_scene or scene_name == next_scene or volumes[scene_name] > 0.35:
 			continue
@@ -68,10 +71,27 @@ def kill_instruments(instruments, current_scene, next_scene):
 				op(instrument_name).RemoveNotes(timeStart=0, pitchStart=0, timeEnd=16, pitchEnd=127)
 				op(instrument_name).par.Stopclip.pulse()
 
+			# If it's SFX, reset the clip without doing anything MIDI-wise
+			elif instrument_props.instrument_role == 'sfx':
+				op(instrument_name).par.Stopclip.pulse()
+
 			# Else, it's MIDI, so reset it
 			else:
 				op(instrument_name).SendMIDI('flush')
 				op(instrument_name).par.Clearchop.pulse()
+
+			# Also kill off its playing MIDI notes from state
+			# Add the new instrument object
+			new_instrument_props = instrument_props
+			new_instrument_props.playing_notes = []
+			empty_instruments[instrument_name] = Instrument(**vars(new_instrument_props))
+
+
+		base_instruments = storage.fetch('instruments', {}) # We need to get the updated values from other scenes, so we have to directly fetch this from storage instead of passing in as a prop
+		storage.store('instruments', base_instruments | {
+			scene_name: empty_instruments
+		})
+
 
 def adjust_to_chord_in_scale_mode(notes, scale_mode_notes, chord_base_note, chord_notes, mode, ignore_notes=[], override_scale_mode_notes=False):
 	"""
@@ -89,12 +109,6 @@ def adjust_to_chord_in_scale_mode(notes, scale_mode_notes, chord_base_note, chor
 	Returns:
 	The notes adjusted to the given scale mode and chord variation.
 	"""
-	# print('--------------------')
-	# print(mode)
-	# print(notes)
-	# print(chord_base_note)
-	# print(scale_mode_notes)
-	# print(chord_notes)
 
 	# Convert input lists from strings to integers
 	notes = [(int(note) + int(chord_base_note)) for note in notes]
@@ -168,6 +182,23 @@ def trigger_percussion(percussion_instruments):
 		op(instrument_name).SendMIDI('note', int(instrument_props.base_note), 0)
 		op(instrument_name).SendMIDI('note', int(instrument_props.base_note), 100)
 
+def adjust_melody_to_proper_octave(notes, base_note, scale_mode_notes, chord_base_note, chord_notes, override_scale_mode_notes, key_offset, ignore_notes=[]):
+	# Get the adjusted notes, then shift them to the proper octave for the instrument
+	melody_notes = adjust_to_chord_in_scale_mode(
+		notes=notes,
+		scale_mode_notes=scale_mode_notes,
+		chord_base_note=chord_base_note,
+		chord_notes=chord_notes,
+		mode="melody",
+		override_scale_mode_notes=override_scale_mode_notes,
+		ignore_notes=ignore_notes
+	)
+	instrument_melody_notes = [(int(note) + int(key_offset)) for note in melody_notes]
+	while min(instrument_melody_notes) < int(base_note):
+		instrument_melody_notes = [note + 12 for note in instrument_melody_notes]
+
+	return instrument_melody_notes
+
 
 def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, scene):
 	"""
@@ -239,15 +270,16 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 				# night and morning
 				case 0:
 					# Main theme variant
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['0', '7', '5', '4'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset,
+						ignore_notes=[4, 10]
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 2.0, 1.0, 100, 0), 
 						(instrument_melody_notes[1], 3.0, 1.0, 100, 0), 
@@ -256,15 +288,15 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 					)
 				case 1:
 					# Discount Clair de Lune (sorry Debussy)
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['7', '7', '4', '2', '4', '2'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0] - 12, 0.0, 2.0, 100, 0), 
 						(instrument_melody_notes[1], 2.0, 3.0, 100, 0), 
@@ -275,15 +307,15 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 					)
 				case 2:
 					# Like Real People Do riff (sorry Hozier)
-					melody_notes = adjust_to_chord_in_scale_mode(
-						notes=['9', '7', '4', '2', '0'],
+					instrument_melody_notes = adjust_melody_to_proper_octave(
+						notes=['9', '7', '4', '2', '4'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 1.0, 1.0, 100, 0), 
 						(instrument_melody_notes[1], 2.0, 1.0, 100, 0), 
@@ -293,16 +325,16 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 					)
 				case 3:
 					# Main theme
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['0', '5', '7', '12', '10', '7', '5', '7'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						ignore_notes=[10],
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset,
+						ignore_notes=[10]
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 0.0, 1.0, 100, 0), 
 						(instrument_melody_notes[1], 1.0, 1.0, 100, 0), 
@@ -316,15 +348,15 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 				# morning and day
 				case 4:
 					# Discount Ranz des Vaches (sorry Rossini)
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['12', '14', '7', '12', '16', '7'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset,
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 0.0, 1.0, 100, 0), 
 						(instrument_melody_notes[1], 1.0, 2.0, 100, 0), 
@@ -335,16 +367,16 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 					)
 				case 5:
 					# Variant of main theme
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['0', '7', '9', '5', '7'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						ignore_notes=[10],
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset,
+						ignore_notes=[10]
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 0.0, 1.0, 100, 0), 
 						(instrument_melody_notes[1], 1.0, 1.0, 100, 0), 
@@ -354,15 +386,15 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 					)
 				case 6:
 					# OMG an original! A little woodwind run riff
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['0', '5', '7', '12', '14', '12'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 0.0, 0.25, 100, 0), 
 						(instrument_melody_notes[1], 0.25, 0.25, 100, 0), 
@@ -373,16 +405,16 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 					)
 				case 7:
 					# Main theme
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['0', '5', '7', '12', '10', '7', '5', '7'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						ignore_notes=[10],
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset,
+						ignore_notes=[10]
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 0.0, 1.0, 100, 0), 
 						(instrument_melody_notes[1], 1.0, 1.0, 100, 0), 
@@ -396,35 +428,35 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 				# day and evening
 				case 8:
 					# Discount Hyrule Field from OOT (the intro)
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['2', '10', '7', '2', '10', '7'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						ignore_notes=[10], # Always want the flat 7
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset,
+						ignore_notes=[10] # Always want the flat 7
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
-						(instrument_melody_notes[0], 1.0, 0.25, 100, 0), 
-						(instrument_melody_notes[1] - 12, 1.25, 0.25, 100, 0), 
-						(instrument_melody_notes[2], 1.5, 0.5, 100, 0), 
-						(instrument_melody_notes[3], 3.0, 0.25, 100, 0), 
-						(instrument_melody_notes[4] - 12 , 3.25, 0.25, 100, 0), 
-						(instrument_melody_notes[5], 3.5, 0.5, 100, 0),
+						(instrument_melody_notes[0], 1.0, 0.5, 100, 0), 
+						(instrument_melody_notes[1] - 12, 1.5, 0.5, 100, 0), 
+						(instrument_melody_notes[2], 2.5, 1.0, 100, 0), 
+						(instrument_melody_notes[3], 3.0, 0.5, 100, 0), 
+						(instrument_melody_notes[4] - 12 , 3.5, 0.5, 100, 0), 
+						(instrument_melody_notes[5], 4.0, 1.0, 100, 0),
 					)
 				case 9:
 					# Seikilos epitaph (measure #1)
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['0', '7', '7', '9', '7'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 0.0, 2.0, 100, 0), 
 						(instrument_melody_notes[1], 2.0, 3.0, 100, 0), 
@@ -434,15 +466,15 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 					)
 				case 10:
 					# Some original smthn, a bit of a trumpet riff
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['2', '4', '7', '4'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 0.0, 0.166, 100, 0), 
 						(instrument_melody_notes[1], 0.166, 0.166, 100, 0), 
@@ -451,16 +483,16 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 					)
 				case 11:
 					# Main theme
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['0', '5', '7', '12', '10', '7', '5', '7'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						ignore_notes=[10],
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset,
+						ignore_notes=[10]
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 0.0, 1.0, 100, 0), 
 						(instrument_melody_notes[1], 1.0, 1.0, 100, 0), 
@@ -474,16 +506,16 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 				# evening and night
 				case 12:
 					# Discount Hyrule Field from OOT (main riff)
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['0', '7', '0', '12', '10', '9', '7'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						ignore_notes=[10], # Always want the flat 7
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset,
+						ignore_notes=[10] # Always want the flat 7
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 0.0, 1.0, 100, 0), 
 						(instrument_melody_notes[1] - 12, 1.0, 1.0, 100, 0), 
@@ -495,32 +527,33 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 					)
 				case 13:
 					# Main theme variant
-					melody_notes = adjust_to_chord_in_scale_mode(
-						notes=['0', '7', '5', '4'],
+					instrument_melody_notes = adjust_melody_to_proper_octave(
+						notes=['0', '7', '7', '7', '4'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
-						(instrument_melody_notes[0], 2.0, 1.0, 100, 0), 
-						(instrument_melody_notes[1], 3.0, 1.0, 100, 0), 
-						(instrument_melody_notes[2], 4.0, 3.0, 100, 0), 
-						(instrument_melody_notes[3], 7.0, 3.0, 100, 0),
+						(instrument_melody_notes[0], 0.0, 1.0, 100, 0), 
+						(instrument_melody_notes[1], 1.0, 1.0, 100, 0), 
+						(instrument_melody_notes[2], 2.0, 1.0, 100, 0), 
+						(instrument_melody_notes[3], 3.0, 1.0, 100, 0), 
+						(instrument_melody_notes[4], 4.0, 3.0, 100, 0), 
 					)
 				case 14:
 					# Seikilos epitaph (measure #5)
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['0', '4', '7', '5', '4', '5', '4'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 1.0, 1.0, 100, 0), 
 						(instrument_melody_notes[1], 2.0, 1.0, 100, 0), 
@@ -532,16 +565,16 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 					)
 				case 15:
 					# Main theme
-					melody_notes = adjust_to_chord_in_scale_mode(
+					instrument_melody_notes = adjust_melody_to_proper_octave(
 						notes=['0', '5', '7', '12', '10', '7', '5', '7'],
+						base_note=base_note,
 						scale_mode_notes=scale_notes,
 						chord_base_note=chord_base_note,
 						chord_notes=chord_variation_notes,
-						mode="melody",
-						ignore_notes=[10],
-						override_scale_mode_notes=override_scale_mode_notes
+						override_scale_mode_notes=override_scale_mode_notes,
+						key_offset=key_offset,
+						ignore_notes=[10]
 					)
-					instrument_melody_notes = [(int(note) + int(base_note) + int(key_offset)) for note in melody_notes]
 					notes = (
 						(instrument_melody_notes[0], 0.0, 1.0, 100, 0), 
 						(instrument_melody_notes[1], 1.0, 1.0, 100, 0), 
@@ -642,6 +675,21 @@ def change_notes_for_scene(current_chord_notes, new_chord_notes, key, instrument
 			new_instruments[instrument_name] = Instrument(**vars(new_instrument_props))
 			continue
 
+		# If it's SFX, just make sure it's playing if it's not
+		elif instrument_props.instrument_role == 'sfx':
+			new_instrument_props = instrument_props
+			new_instruments[instrument_name] = Instrument(**vars(new_instrument_props))
+
+			# Only play the clip if it's not currently playing (via a hacky way of getting if the clip is playing LOL)
+			if op(instrument_name + '/out1')['song/_' + instrument_name.replace("_", " ").title().replace(" ", "_") + '/__clip__/0/playing_position'] <= 0:
+				# If it's a randomly-triggered clip (manually set bc I'm lazy), then do a chance before kicking it off
+				if instrument_name == 'owl_hoots' and random.randint(0, 2) == 0:
+					op(instrument_name).par.Fireclip.pulse()
+				elif instrument_name != 'owl_hoots':
+					op(instrument_name).par.Fireclip.pulse()
+
+			continue
+
 		# Else, we actually care about notes
 		else:
 			current_notes = normalize_notes(current_chord_notes[:instrument_props.num_voices])
@@ -702,7 +750,7 @@ def onOffToOn(channel, sampleIndex, val, prev):
 	# Do any scene-related music controls, which may have changed during time of day operation
 	current_scene = storage.fetch('current_scene', 'day')
 	current_scene_info = scenes[current_scene]
-	next_scene = storage.fetch('next_scene', 'evening')
+	next_scene = current_scene_info.next_scene_name
 
 	if not current_scene_info.scale_mode == scale_mode:
 		# Update the global storage and local variables

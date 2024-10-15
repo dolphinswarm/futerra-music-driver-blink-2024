@@ -11,9 +11,9 @@ from typing import List, Dict
 
 class Instrument:
 	# Props
-	base_note: int
+	base_note: int # NOTE: For melody instruments, the base note is treated as the minumum note an instrument can play; this is to avoid weirdness with the ranges of instruments when shifted up/down in a key or chord
 	num_voices: int
-	instrument_role: str # Possible roles: bass, chords, effects, melody, percussion (used to have event, but removed in favor of just using the params from TDAbleton + MIDI)
+	instrument_role: str # Possible roles: bass, chords, effects, melody, percussion, sfx (used to have event, but removed in favor of just using the params from TDAbleton + MIDI)
 	scene: str
 	playing_notes: List[int]
 
@@ -46,39 +46,47 @@ def onOffToOn(channel, sampleIndex, val, prev):
 	storage.store('chord_variation', 'major triad')
 	storage.store('chord_notes', ['0', '4', '7'] )
 	storage.store('active_melody', 'none')
-	storage.store('current_scene', 'morning')
-	storage.store('next_scene', 'day')
+	storage.store('current_scene', 'night')
 
 	# Instruments are stored grouped by scene, with each instrument being a dictionary of name and props
 	instruments: Dict[str, Dict[str, Instrument]] = {
 		'morning': {
-			"english_horn": Instrument(base_note=48, num_voices=0, instrument_role="melody", scene="morning", playing_notes=[]), # Melody doesn't follow the typical chain, so we set the notes to 0 for safety
+			"english_horn": Instrument(base_note=54, num_voices=0, instrument_role="melody", scene="morning", playing_notes=[]), # Melody doesn't follow the typical chain, so we set the notes to 0 for safety + set the base note as the min. possible note
 			"french_horn": Instrument(base_note=48, num_voices=4, instrument_role="chords", scene="morning", playing_notes=[]),
 			"geigan_organ": Instrument(base_note=60, num_voices=4, instrument_role="chords", scene="morning", playing_notes=[]),
-			# "event_morning_bells": Instrument(base_note=72, num_voices=0, instrument_role="event", scene="morning", playing_notes=[]), # Same with event
 			"morning_bells": Instrument(base_note=72, num_voices=4, instrument_role="effects", scene="morning", playing_notes=[]),
 			"fifth_morning_pad": Instrument(base_note=48, num_voices=1, instrument_role="effects", scene="morning", playing_notes=[]),
 			"morning_sun_pad": Instrument(base_note=60, num_voices=1, instrument_role="effects", scene="morning", playing_notes=[]),
 			"sub_bass_morning": Instrument(base_note=36, num_voices=1, instrument_role="bass", scene="morning", playing_notes=[]),
+			"morning_birds": Instrument(base_note=0, num_voices=0, instrument_role="sfx", scene="morning", playing_notes=[]),
+			"lake_morning": Instrument(base_note=0, num_voices=0, instrument_role="sfx", scene="morning", playing_notes=[]),
 		}, 
 		'day': {
-			"flute": Instrument(base_note=72, num_voices=0, instrument_role="melody", scene="day", playing_notes=[]),
+			"flute": Instrument(base_note=69, num_voices=0, instrument_role="melody", scene="day", playing_notes=[]),
 			"strings_hi_day": Instrument(base_note=72, num_voices=1, instrument_role="chords", scene="day", playing_notes=[]),
 			"church_organ": Instrument(base_note=60, num_voices=4, instrument_role="chords", scene="day", playing_notes=[]),
 			"chimes": Instrument(base_note=60, num_voices=4, instrument_role="effects", scene="day", playing_notes=[]),
 			"strings_lo": Instrument(base_note=24, num_voices=1, instrument_role="bass", scene="day", playing_notes=[]),
+			"harp": Instrument(base_note=48, num_voices=4, instrument_role="effects", scene="day", playing_notes=[]),
+			"suspended_cymbal": Instrument(base_note=48, num_voices=1, instrument_role="percussion", scene="day", playing_notes=[]),
+			"day_birds": Instrument(base_note=0, num_voices=0, instrument_role="sfx", scene="day", playing_notes=[]),
+			"wind_day": Instrument(base_note=0, num_voices=0, instrument_role="sfx", scene="day", playing_notes=[]),
+			"lake_day": Instrument(base_note=0, num_voices=0, instrument_role="sfx", scene="day", playing_notes=[]),
 			
 		},
 		'evening': {
-			"brass_ensemble": Instrument(base_note=48, num_voices=0, instrument_role="melody", scene="evening", playing_notes=[]),
+			"brass_ensemble_hi": Instrument(base_note=36, num_voices=0, instrument_role="melody", scene="evening", playing_notes=[]),
 			"strings_hi_evening": Instrument(base_note=72, num_voices=1, instrument_role="chords", scene="evening", playing_notes=[]),
 			"slow_space_pad": Instrument(base_note=48, num_voices=4, instrument_role="chords", scene="evening", playing_notes=[]),
 			"106_organ": Instrument(base_note=60, num_voices=4, instrument_role="effects", scene="evening", playing_notes=[]),
-			"gong": Instrument(base_note=36, num_voices=1, instrument_role="percussion", scene="evening", playing_notes=[]), # TODO better percussion system?
+			"gong": Instrument(base_note=36, num_voices=1, instrument_role="percussion", scene="evening", playing_notes=[]),
 			"sub_bass_evening": Instrument(base_note=24, num_voices=1, instrument_role="bass", scene="evening", playing_notes=[]),
+			"brass_ensemble_lo": Instrument(base_note=24, num_voices=1, instrument_role="bass", scene="evening", playing_notes=[]),
+			"wind_evening": Instrument(base_note=0, num_voices=0, instrument_role="sfx", scene="evening", playing_notes=[]),
+			"lake_evening": Instrument(base_note=0, num_voices=0, instrument_role="sfx", scene="evening", playing_notes=[]),
 		},
 		'night' : {
-			"strings_melody": Instrument(base_note=36, num_voices=0, instrument_role="melody", scene="night", playing_notes=[]),
+			"gaelic_voices": Instrument(base_note=56, num_voices=0, instrument_role="melody", scene="night", playing_notes=[]),
 			"glockenspiel": Instrument(base_note=72, num_voices=1, instrument_role="chords", scene="night", playing_notes=[]),
 			"reflectere_piano": Instrument(base_note=48, num_voices=4, instrument_role="chords", scene="night", playing_notes=[]),
 			"dreamer_pad": Instrument(base_note=48, num_voices=4, instrument_role="chords", scene="night", playing_notes=[]),
@@ -87,6 +95,9 @@ def onOffToOn(channel, sampleIndex, val, prev):
 			"meditation_pad": Instrument(base_note=60, num_voices=1, instrument_role="effects", scene="night", playing_notes=[]),
 			"zen_bowl": Instrument(base_note=72, num_voices=4, instrument_role="effects", scene="night", playing_notes=[]),
 			"sub_bass_night": Instrument(base_note=24, num_voices=1, instrument_role="bass", scene="night", playing_notes=[]),
+			"cricket_chirps": Instrument(base_note=0, num_voices=0, instrument_role="sfx", scene="night", playing_notes=[]),
+			"owl_hoots": Instrument(base_note=0, num_voices=0, instrument_role="sfx", scene="night", playing_notes=[]),
+			"lake_night": Instrument(base_note=0, num_voices=0, instrument_role="sfx", scene="night", playing_notes=[]),
 		},
 	}
 	storage.store('instruments', instruments)
@@ -97,7 +108,6 @@ def onOffToOn(channel, sampleIndex, val, prev):
 		'day': Scene(scene_name='day', next_scene_name='evening', scale_mode='ionian'),
 		'evening': Scene(scene_name='evening', next_scene_name='night', scale_mode='mixolydian'),
 		'night' : Scene(scene_name='night', next_scene_name='morning', scale_mode='dorian'), #aeolian
-		# 'late_night' : Scene(scene_name='late_night', next_scene_name='morning', scale_mode='dorian'),
 	}
 	storage.store('scenes', scenes)
 
