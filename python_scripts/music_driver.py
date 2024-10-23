@@ -14,9 +14,9 @@ from typing import List, Dict
 
 class Instrument:
 	# Props
-	base_note: int
+	base_note: int # NOTE: For melody instruments, the base note is treated as the minumum note an instrument can play; this is to avoid weirdness with the ranges of instruments when shifted up/down in a key or chord
 	num_voices: int
-	instrument_role: str # Possible roles: bass, chords, effects, melody, event
+	instrument_role: str # Possible roles: bass, chords, effects, melody, percussion, sfx (used to have event, but removed in favor of just using the params from TDAbleton + MIDI)
 	scene: str
 	playing_notes: List[int]
 
@@ -49,12 +49,12 @@ volumes = op('volumes')
 # region Helper Functions
 
 def kill_instruments(instruments, current_scene, next_scene):
-	"""
-	Function to adjust the given notes to chromatically fit a key, taking into account chord variations.
+	"""Stops all the instruments from a provided list.
 
-	Parameters:
-	instruments: The instruments object from the store
-	current_scene (str): The name of the current scene
+	Args:
+		instruments (dictionary of Instruments): A dictionary of Instruments to stop playing.
+		current_scene (str): The current scene playing.
+		next_scene (str): The upcoming scene.
 	"""
 	for scene_name, scene_instruments in instruments.items():
 		# Make an empty object for killing off instruments
@@ -94,20 +94,19 @@ def kill_instruments(instruments, current_scene, next_scene):
 
 
 def adjust_to_chord_in_scale_mode(notes, scale_mode_notes, chord_base_note, chord_notes, mode, ignore_notes=[], override_scale_mode_notes=False):
-	"""
-	Function to adjust the given notes to chromatically fit a key, taking into account spicy chord variations.
+	"""Changes a given set of notes to a specific chord (i.e., IV) in a given scale mode (i.e., dorian).
 
-	Parameters:
-	notes (string array of numbers): Each '#' is the index of a note chromatically above a root of 0
-	scale_mode_notes (string array of numbers): Each '#' is the index of a note chromatically above a root of 0 in a given scale mode
-	chord_base_note (number): The base note of the chord above 0
-	chord_notes (string array of numbers): Specific notes of the chord (e.g., for a vi half-diminished chord, pass [0, 3, 6, 10] for root, minor third, flat fifth, and minor seventh)
-	mode (string): "chord" or "melody"
-	ignore_notes (array of numbers): The notes (above the root) we should ignore when evaluating the expression
-	override_scale_mode_notes (bool): If True, ensures chord notes override scale mode notes when adjusting melody.
+	Args:
+		notes (list[str]): An array of string numbers, indicating their position above the root of the chord (0).
+		scale_mode_notes (list[str]): An array of string numbers, which indicate all notes in a scale mode based on their position above the root (0).
+		chord_base_note (str): The base note of the chord, represented by a position above the root (0).
+		chord_notes (list[str]): An array of string numbers, which indicate all notes in a chord variation based on their position above the root (0).
+		mode (str): "chord" mode (which ignores specific chord notes) or "melody" mode (which ignores notes specified in ignore_notes)
+		ignore_notes (list[int], optional): A list of note positions that we should not adjust to a given mode. Defaults to [].
+		override_scale_mode_notes (bool, optional): Should we override the scale mode notes? Defaults to False.
 
 	Returns:
-	The notes adjusted to the given scale mode and chord variation.
+		str[]: A string array of notes, adjusted to the above parameters.
 	"""
 
 	# Convert input lists from strings to integers
@@ -133,15 +132,16 @@ def adjust_to_chord_in_scale_mode(notes, scale_mode_notes, chord_base_note, chor
 	return new_notes
 
 def find_closest_note(note, target_notes):
-	"""
-	Function to find the closest note in a chord. Used to give smoother note transitions between chords
+	"""Finds the closest note in a list of target notes.
 
-	Parameters:
-	note (int): The index of a note chromatically above a root of 0
-	target_notes (str array of numbers): the given notes of a chord, each chromatically above a root of 0
+	Args:
+		note (int): The current note, in a position above the root (0) of a chord.
+		target_notes (list[int]): A list of target notes, in positions above the root (0) of a chord.
 
 	Returns:
-	The closest note in the scale (int), and the original note (int)
+		ints:
+			- int: The new closest note
+			- int: The original note
 	"""
 	# Find the closest note in target_notes to the given note, considering both current and previous octaves
 	candidates = [(tn, tn) for tn in target_notes] + [(tn - 12, tn) for tn in target_notes]
@@ -149,27 +149,25 @@ def find_closest_note(note, target_notes):
 	return closest_note, original
 
 def normalize_notes(notes):
-	"""
-	Normalizes notes to a single octave (pitch class)
+	"""Normalizes notes to a single octave.
 
-	Parameters:
-	notes (str array of numbers): the given notes of a chord, each chromatically above a root of 0
+	Args:
+		notes (list[str]): A list of string notes, each a position above a root (0).
 
 	Returns:
-	An int array of notes in a given chord, normalized to be within a single octave
+		list[int]: A list of notes normalized to one octave.
 	"""
 	return [int(note) % 12 for note in notes]
 
 def adjust_octave(note, reference):
-	"""
-	Adjusts the octave of a note to be within the same as a reference note
+	"""Adjusts the octave of a note to be within the same as a reference note.
 
-	Parameters:
-	note (int): The pitch of the note
-	reference (int): The reference note 
+	Args:
+		note (int): A note position above a root (0).
+		reference (int): A base note to adjust the octave to.
 
 	Returns:
-	The note, adjusted to be in the same octave as the reference
+		int: A note adjusted to fit near the reference note
 	"""
 	while note < reference:
 		note += 12
@@ -178,11 +176,33 @@ def adjust_octave(note, reference):
 	return note
 
 def trigger_percussion(percussion_instruments):
-	for instrument_name, instrument_props in percussion_instruments.items():
-		op(instrument_name).SendMIDI('note', int(instrument_props.base_note), 0)
-		op(instrument_name).SendMIDI('note', int(instrument_props.base_note), 100)
+	"""Triggers all percussion instruments.
+
+	Args:
+		percussion_instruments (Dictionary of Instruments): A dictionary of percussion instruments.
+	"""
+	should_trigger_percussion = random.randint(0, 1) == 1
+	if should_trigger_percussion:
+		for instrument_name, instrument_props in percussion_instruments.items():
+			op(instrument_name).SendMIDI('note', int(instrument_props.base_note), 0)
+			op(instrument_name).SendMIDI('note', int(instrument_props.base_note), 100)
 
 def adjust_melody_to_proper_octave(notes, base_note, scale_mode_notes, chord_base_note, chord_notes, override_scale_mode_notes, key_offset, ignore_notes=[]):
+	"""Adjusts a melody to a proper scale mode and octave.
+
+	Args:
+		notes (list[str]): An array of string numbers, indicating their position above the root of the chord (0).
+		base_note (str): The "base" (lowest) note for a given melody instrument.
+		scale_mode_notes (list[str]): An array of string numbers, which indicate all notes in a scale mode based on their position above the root (0).
+		chord_base_note (str): The base note of the chord, represented by a position above the root (0).
+		chord_notes (list[str]): An array of string numbers, which indicate all notes in a chord variation based on their position above the root (0).
+		override_scale_mode_notes (bool): Should we override the scale mode notes?
+		key_offset (str): The pitch offset for a given key.
+		ignore_notes (list[int], optional): A list of note positions that we should not adjust to a given mode. Defaults to [].
+
+	Returns:
+		list[int]: A list of melody notes adjusted to a given octave/key/scale mode.
+	"""
 	# Get the adjusted notes, then shift them to the proper octave for the instrument
 	melody_notes = adjust_to_chord_in_scale_mode(
 		notes=notes,
@@ -201,16 +221,15 @@ def adjust_melody_to_proper_octave(notes, base_note, scale_mode_notes, chord_bas
 
 
 def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, scene):
-	"""
-	Triggers a given melody in a melody channel(s)
+	"""Triggers a melody for all applicable melody instruments.
 
-	Parameters:
-	melody_instruments (dict[str, Instrument]): A dictionary of melody instruments
-	chord (str array of notes): The notes of a given chord
-	chord_variation (str): The name of the current chord variation
-	key (str): The current key of the song
-	scale_mode (str): A scale mode
-	scene (str): The name of the active scene
+	Args:
+		melody_instruments (Dictionary of Instruments): A dictionary of all melody instruments to trigger.
+		chord (str): A given chord to play (ii, VI, etc.)
+		chord_variation (str): A chord variation to play (sus2, dim, etc.)
+		key (str): The current key of the song.
+		scale_mode (str): The current scale mode of the song (dorian, lydian, etc.)
+		scene (str): The current scene (day, evening, etc.)
 	"""
 	# Clear out the currently-playing melody
 	storage.store('active_melody', 'none')
@@ -591,17 +610,18 @@ def trigger_melody(melody_instruments, chord, chord_variation, key, scale_mode, 
 			op(instrument_name).par.Fireclip.pulse()
 
 def generate_chord_variant(chord, chord_variation, scale_mode, grab_random_variant = False):
-	"""
-	Generates a chord vairant from a given chord
+	"""Generates the notes for a new chord variant, based on a given chord and scale mode.
 
-	Parameters:
-	chord (str): A Roman numberal representation of a chord (I, ii, etc.)
-	chord_variation (str): A chord variation (sus2, 7, etc.)
-	scale_mode (str): A scale mode
-	grab_random_variant (bool): Should we grab a random variant or should we transition to a more fluid variant next?
+	Args:
+		chord (str): A given chord to play (ii, VI, etc.)
+		chord_variation (str): A chord variation to play (sus2, dim, etc.)
+		scale_mode (str): The current scale mode of the song (dorian, lydian, etc.)
+		grab_random_variant (bool, optional): Should we grab a random variation, or should we follow the transitional variants? Defaults to False.
 
 	Returns:
-	The new notes of the chord (str array) and the chord variation name
+		multiple:
+			- list[int]: The notes of the chord variant, above a given root (0)
+			- str: the name of the new variation
 	"""
 	# Choose a chord variant based on the specified parameter
 	if grab_random_variant == True:
@@ -639,14 +659,14 @@ def generate_chord_variant(chord, chord_variation, scale_mode, grab_random_varia
 	return new_notes, new_variation
 
 def change_notes_for_scene(current_chord_notes, new_chord_notes, key, instruments, scene):
-	"""
-	Changes the notes of a set of instruments to match the chord's notes
+	"""Changes the notes of a set of instruments to match the chord's notes. Has code for smooth transitions of notes.
 
-	Parameters:
-	current_chord_notes (str array): The notes of the current chord
-	new_chord_notes (str array): The notes of the new chord
-	instruments (dict[str, Instrument]): A dictionary of instruments for a given scene
-	scene (str): The scene whose instruments we're modifying
+	Args:
+		current_chord_notes (list[str]): The old (previous) notes that were played in a chord, in positions above a root (0).
+		new_chord_notes (list[str]): The new notes that were played in a chord, in positions above a root (0).
+		key (str): The current key of the song.
+		instruments (Dictionary of Instruments): A Dictionary of Instruments for a given scene.
+		scene (str): The current scene (day, evening, etc.)
 	"""
 	# Get the offset for the key
 	key_offset = keys_table[keys_table.findCell(key, caseSensitive=True).row, 'Offset']
@@ -852,7 +872,6 @@ def onOffToOn(channel, sampleIndex, val, prev):
 		instruments=current_scene_instruments,
 		scene=current_scene,
 	)
-
 	change_notes_for_scene(
 		current_chord_notes=current_notes,
 		new_chord_notes=new_notes,
@@ -872,8 +891,7 @@ def onOffToOn(channel, sampleIndex, val, prev):
 		scene=current_scene,
 	)
 
-	# Also trigger the percussion
-	# TODO trigger by volume?
+	# Also possibly trigger the percussion
 	if change_type != "chord variation":
 		percussion_instruments = {key: value for key, value in current_scene_instruments.items() if value.instrument_role == 'percussion'} | {key: value for key, value in next_scene_instruments.items() if value.instrument_role == 'percussion'} # Prolly a better way of doing this
 		trigger_percussion(percussion_instruments=percussion_instruments)
