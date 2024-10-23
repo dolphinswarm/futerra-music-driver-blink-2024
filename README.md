@@ -13,7 +13,7 @@ An audio preview of the system can be found in the `/assets` folder.
 -   [Music Design](#music-design)
 -   [Core Technologies](#core-technologies)
 -   [The Music Algorithm](#the-music-algorithm)
--   [Future Improvements](#future-imporvements)
+-   [Future Improvements](#future-improvements)
 
 ## Music Design
 
